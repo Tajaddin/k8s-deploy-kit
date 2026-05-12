@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "k8s-deploy-kit"
+version = "0.1.0"
+description = "Production Kubernetes deploy kit: Helm chart with HPA + PDB, Kustomize overlays for dev/prod, Terraform EKS module. 30+ structural tests run against the YAML/HCL with no cluster required."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Tajaddin Gafarov", email = "gafarovtajaddin@gmail.com"}]
+keywords = ["kubernetes", "helm", "kustomize", "terraform", "eks", "devops", "platform"]
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

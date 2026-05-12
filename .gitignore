@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+.env
+.idea/
+.vscode/
+*.log
+.DS_Store
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+# helm
+charts/
+*.tgz
+# kind kubeconfig
+.kube/
+bench/results/

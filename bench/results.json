@@ -1,0 +1,31 @@
+{
+  "host": "win32",
+  "tools_available": {
+    "helm": false,
+    "kustomize": false,
+    "terraform": false
+  },
+  "stages": [
+    {
+      "label": "yaml_parse_all",
+      "ms": 20.04,
+      "docs_parsed": 7,
+      "bytes_total": 4545
+    },
+    {
+      "label": "helm_template",
+      "ms": 6.13,
+      "skipped": true
+    },
+    {
+      "label": "kustomize_build",
+      "ms": 5.27,
+      "skipped": true
+    },
+    {
+      "label": "terraform_validate",
+      "ms": 5.55,
+      "skipped": true
+    }
+  ]
+}

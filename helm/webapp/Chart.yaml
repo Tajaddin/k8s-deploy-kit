@@ -1,0 +1,14 @@
+apiVersion: v2
+name: webapp
+description: "Production-shaped Helm chart: Deployment with rolling updates, HPA, PodDisruptionBudget, Service, Ingress, ConfigMap, Secret reference, ServiceMonitor for Prometheus."
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/Tajaddin/k8s-deploy-kit
+maintainers:
+  - name: Tajaddin Gafarov
+    email: gafarovtajaddin@gmail.com
+keywords:
+  - webapp
+  - production
+  - autoscaling
