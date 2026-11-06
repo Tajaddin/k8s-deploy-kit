@@ -58,7 +58,7 @@ Run with `helm` installed (`brew install helm` / `apt install helm`) and `kustom
 ```json
 {
   "stages": [
-    { "label": "yaml_parse_all",    "ms": 30.25, "docs_parsed": 7, "bytes_total": 4860 },
+    { "label": "yaml_parse_all",    "ms": 13.47, "docs_parsed": 7, "bytes_total": 4881 },
     { "label": "helm_template",     "skipped": true },
     { "label": "kustomize_build",   "skipped": true },
     { "label": "terraform_validate","skipped": true }
@@ -68,12 +68,12 @@ Run with `helm` installed (`brew install helm` / `apt install helm`) and `kustom
 
 | Stage | Cost (no extra tools) |
 |---|---:|
-| Parse all committed YAML | **24.6–30.3 ms** (5 runs, median 26.6 ms) for 7 manifests / 4,860 bytes |
+| Parse all committed YAML | 7 manifests / 4,881 bytes; 64.9, 24.9 and 13.5 ms on three back-to-back runs |
 | Helm template render | measured when `helm` is installed |
 | Kustomize build (prod overlay) | measured when `kustomize` is installed |
 | Terraform validate | measured when `terraform` is installed (includes `init -backend=false`) |
 
-The YAML row was measured on Windows (Python 3.12) with the other tools off PATH; `bench/results.json` is the last of those runs.
+The runs were on Windows (Python 3.12) from a `git archive` export, with the other tools off PATH; `bench/results.json` is the last one. The manifest and byte counts are fixed by the repo; the parse time depends on the machine and its load, so compare it only between runs on the same machine.
 
 Stages that depend on external binaries are gracefully skipped if the binary isn't on PATH — the report records `"skipped": true` so CI sees the gap honestly.
 

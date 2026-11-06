@@ -8,23 +8,23 @@
   "stages": [
     {
       "label": "yaml_parse_all",
-      "ms": 30.25,
+      "ms": 13.47,
       "docs_parsed": 7,
-      "bytes_total": 4860
+      "bytes_total": 4881
     },
     {
       "label": "helm_template",
-      "ms": 4.92,
+      "ms": 2.81,
       "skipped": true
     },
     {
       "label": "kustomize_build",
-      "ms": 4.93,
+      "ms": 2.68,
       "skipped": true
     },
     {
       "label": "terraform_validate",
-      "ms": 6.27,
+      "ms": 3.91,
       "skipped": true
     }
   ]
