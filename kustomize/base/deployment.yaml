@@ -18,9 +18,11 @@ spec:
         runAsNonRoot: true
         runAsUser: 10001
         fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: webapp
-          image: ghcr.io/example/webapp:latest
+          image: ghcr.io/example/webapp:0.1.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

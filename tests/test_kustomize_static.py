@@ -22,6 +22,11 @@ def test_base_deployment_has_securityContext(base_deployment):
     assert sc["runAsNonRoot"] is True
 
 
+def test_base_pod_uses_runtime_default_seccomp(base_deployment):
+    sc = base_deployment["spec"]["template"]["spec"]["securityContext"]
+    assert sc["seccompProfile"] == {"type": "RuntimeDefault"}
+
+
 def test_base_deployment_has_resource_limits(base_deployment):
     res = base_deployment["spec"]["template"]["spec"]["containers"][0]["resources"]
     assert "limits" in res and "requests" in res
@@ -45,3 +50,13 @@ def test_overlays_use_distinct_namespaces():
     dev = yaml.safe_load((KUSTOMIZE / "overlays" / "dev" / "kustomization.yaml").read_text(encoding="utf-8"))
     prod = yaml.safe_load((KUSTOMIZE / "overlays" / "prod" / "kustomization.yaml").read_text(encoding="utf-8"))
     assert dev["namespace"] != prod["namespace"]
+
+
+def test_prod_overlay_pins_the_base_image(base_deployment):
+    k = yaml.safe_load((KUSTOMIZE / "overlays" / "prod" / "kustomization.yaml").read_text(encoding="utf-8"))
+    base_image = base_deployment["spec"]["template"]["spec"]["containers"][0]["image"]
+    name = base_image.rsplit(":", 1)[0]
+    pins = {i["name"]: i for i in k.get("images", [])}
+    assert name in pins, f"prod overlay must set the tag or digest of {name}"
+    pin = pins[name]
+    assert pin.get("digest", "").startswith("sha256:") or pin.get("newTag") not in (None, "", "latest")

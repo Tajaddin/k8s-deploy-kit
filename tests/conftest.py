@@ -51,6 +51,23 @@ def helm_rendered(helm_available, tmp_path_factory) -> list[dict]:
 
 
 @pytest.fixture(scope="session")
+def prod_overlay_rendered() -> list[dict]:
+    """Parsed output of building the prod Kustomize overlay.
+
+    Uses ``kustomize build`` or, failing that, ``kubectl kustomize``; skips if neither exists.
+    """
+    overlay = str(ROOT / "kustomize" / "overlays" / "prod")
+    if _has_subprocess("kustomize"):
+        cmd = ["kustomize", "build", overlay]
+    elif _has_subprocess("kubectl"):
+        cmd = ["kubectl", "kustomize", overlay]
+    else:
+        pytest.skip("neither kustomize nor kubectl installed; skipping overlay build tests")
+    out = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    return [d for d in yaml.safe_load_all(out.stdout) if d is not None]
+
+
+@pytest.fixture(scope="session")
 def helm_lint_result(helm_available) -> subprocess.CompletedProcess:
     if not helm_available:
         pytest.skip("helm binary not installed; skipping helm lint")

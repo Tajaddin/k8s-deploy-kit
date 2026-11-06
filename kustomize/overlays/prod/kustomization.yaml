@@ -7,6 +7,12 @@ namePrefix: prod-
 resources:
   - ../../base
 
+# Prod never floats on :latest. The release pipeline replaces this with the
+# built digest: kustomize edit set image ghcr.io/example/webapp@sha256:<digest>
+images:
+  - name: ghcr.io/example/webapp
+    newTag: "0.1.0"
+
 commonLabels:
   app.kubernetes.io/instance: prod
 
