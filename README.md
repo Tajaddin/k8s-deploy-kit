@@ -111,7 +111,7 @@ kustomize build kustomize/overlays/prod
 | Replicas | 1 | 4 |
 | CPU request | 100m | 250m |
 | CPU limit | 500m | 1 core |
-| Image | `0.1.0` from base | pinned in the overlay's `images:`; the release pipeline sets the digest with `kustomize edit set image` |
+| Image | `0.1.0` from base | pinned in the overlay's `images:`; the kit has no release pipeline, so a real one should replace the tag with the built digest (`kustomize edit set image ghcr.io/example/webapp@sha256:<digest>`) |
 
 Overlays use `patches` (the modern API) to selectively override the base — no full-file duplication.
 

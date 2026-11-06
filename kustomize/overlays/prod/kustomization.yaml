@@ -7,8 +7,8 @@ namePrefix: prod-
 resources:
   - ../../base
 
-# Prod never floats on :latest. The release pipeline replaces this with the
-# built digest: kustomize edit set image ghcr.io/example/webapp@sha256:<digest>
+# Prod never floats on :latest. A release pipeline (not part of this kit) should
+# pin the built digest instead: kustomize edit set image ghcr.io/example/webapp@sha256:<digest>
 images:
   - name: ghcr.io/example/webapp
     newTag: "0.1.0"
