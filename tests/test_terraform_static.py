@@ -57,7 +57,8 @@ def test_eks_public_access_cidrs_are_explicit_and_never_open(terraform_text):
     assert "var.public_access_cidrs" in _attr(cluster, "public_access_cidrs")
     cidrs = _block(terraform_text, 'variable "public_access_cidrs"')
     assert _attr(cidrs, "default") == "[]"
-    assert "validation {" in cidrs and '"0.0.0.0/0"' in cidrs
+    # Any /0, however it is written, has netmask 0.0.0.0; terraform/tests runs the real check.
+    assert "validation {" in cidrs and 'cidrnetmask(c) != "0.0.0.0"' in cidrs
     # Turning the public endpoint on without an allowlist must fail at plan time.
     assert "precondition {" in cluster and "length(var.public_access_cidrs) > 0" in cluster
 

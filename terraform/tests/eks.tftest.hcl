@@ -55,6 +55,17 @@ run "open_cidr_is_rejected" {
   expect_failures = [var.public_access_cidrs]
 }
 
+run "any_slash_zero_is_rejected" {
+  command = plan
+
+  variables {
+    endpoint_public_access = true
+    public_access_cidrs    = ["203.0.113.0/24", "1.2.3.4/0"]
+  }
+
+  expect_failures = [var.public_access_cidrs]
+}
+
 run "malformed_cidr_is_rejected" {
   command = plan
 

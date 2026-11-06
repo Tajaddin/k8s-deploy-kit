@@ -25,7 +25,7 @@ Every shipped manifest is **safe-by-default** — the structural tests guarantee
 * PodDisruptionBudget protects rolling restarts
 * Deployment uses `RollingUpdate` strategy with `maxUnavailable: 0`
 * the prod overlay pins the image tag (never `:latest`)
-* the EKS API endpoint is private unless you allowlist CIDRs (`0.0.0.0/0` is rejected), Secrets are KMS-encrypted, and api/audit/authenticator logs go to CloudWatch
+* the EKS API endpoint is private unless you allowlist CIDRs (any `/0` is rejected), Secrets are KMS-encrypted, and api/audit/authenticator logs go to CloudWatch
 
 ## Tests
 
@@ -124,12 +124,12 @@ The control plane itself is configured safely:
 | Setting | Default | Variable |
 |---|---|---|
 | API endpoint | private only | `endpoint_public_access` |
-| Public endpoint allowlist | none; required when the public endpoint is on, `0.0.0.0/0` rejected | `public_access_cidrs` |
+| Public endpoint allowlist | none; required when the public endpoint is on, any `/0` (`0.0.0.0/0`, `1.2.3.4/0`) rejected | `public_access_cidrs` |
 | Secrets encryption | KMS key with rotation, created by the module | — |
 | Control-plane logs | `api`, `audit`, `authenticator` to `/aws/eks/<cluster>/cluster` | `cluster_log_types` |
 | Log retention | 90 days | `cluster_log_retention_days` |
 
-With the default private endpoint, `kubectl` must run from inside the VPC (VPN, bastion or CI runner). The structural tests keep these settings, the policy attachment and the outputs in place across edits. `terraform/tests/eks.tftest.hcl` checks the behaviour: it plans against `mock_provider "aws"` (no credentials, nothing created), asserts the defaults above, and expects the plan to fail for a public endpoint with no allowlist, `0.0.0.0/0`, or a malformed CIDR. CI runs `terraform fmt -check`, `validate` and `test`; `mock_provider` needs Terraform 1.7 or later.
+With the default private endpoint, `kubectl` must run from inside the VPC (VPN, bastion or CI runner). The structural tests keep these settings, the policy attachment and the outputs in place across edits. `terraform/tests/eks.tftest.hcl` checks the behaviour: it plans against `mock_provider "aws"` (no credentials, nothing created), asserts the defaults above, and expects the plan to fail for a public endpoint with no allowlist, any `/0`, or a malformed CIDR. CI runs `terraform fmt -check`, `validate` and `test`; `mock_provider` needs Terraform 1.7 or later.
 
 ```bash
 cd terraform

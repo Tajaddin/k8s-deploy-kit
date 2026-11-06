@@ -51,8 +51,8 @@ variable "public_access_cidrs" {
   default     = []
 
   validation {
-    condition     = alltrue([for c in var.public_access_cidrs : can(cidrnetmask(c)) && c != "0.0.0.0/0"])
-    error_message = "public_access_cidrs must be IPv4 CIDRs and must not include 0.0.0.0/0."
+    condition     = alltrue([for c in var.public_access_cidrs : try(cidrnetmask(c) != "0.0.0.0", false)])
+    error_message = "public_access_cidrs must be IPv4 CIDRs and must not include a /0 (such as 0.0.0.0/0), which opens the endpoint to every address."
   }
 }
 
