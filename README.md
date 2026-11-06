@@ -129,12 +129,13 @@ The control plane itself is configured safely:
 | Control-plane logs | `api`, `audit`, `authenticator` to `/aws/eks/<cluster>/cluster` | `cluster_log_types` |
 | Log retention | 90 days | `cluster_log_retention_days` |
 
-With the default private endpoint, `kubectl` must run from inside the VPC (VPN, bastion or CI runner). The structural tests keep these settings, the policy attachment and the outputs in place across edits.
+With the default private endpoint, `kubectl` must run from inside the VPC (VPN, bastion or CI runner). The structural tests keep these settings, the policy attachment and the outputs in place across edits. `terraform/tests/eks.tftest.hcl` checks the behaviour: it plans against `mock_provider "aws"` (no credentials, nothing created), asserts the defaults above, and expects the plan to fail for a public endpoint with no allowlist, `0.0.0.0/0`, or a malformed CIDR. CI runs `terraform fmt -check`, `validate` and `test`; `mock_provider` needs Terraform 1.7 or later.
 
 ```bash
 cd terraform
 terraform init -backend=false
 terraform validate
+terraform test
 ```
 
 ## Quickstart
