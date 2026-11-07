@@ -1,8 +1,8 @@
 # k8s-deploy-kit
 
-> Production-ready Kubernetes deployment kit: **Helm chart** with HPA + PodDisruptionBudget + ServiceMonitor, **Kustomize overlays** for dev/prod, **Terraform module** for an EKS cluster. **28 structural tests** — 19 run with no tooling installed, 9 more activate when `helm` is on PATH. **Every test passes safe-by-default invariants**: non-root containers, drop-all capabilities, resource limits, rolling-update with `maxUnavailable: 0`, HPA min replicas ≥ 2.
+> Production-shaped Kubernetes deployment kit: **Helm chart** with HPA + PodDisruptionBudget + ServiceMonitor, **Kustomize overlays** for dev/prod, and a **Terraform stub** for an EKS cluster (private API endpoint, KMS-encrypted Secrets, control-plane logs). **38 structural tests** — 26 run with no tooling installed, 10 more activate when `helm` is on PATH and 2 when `kustomize` or `kubectl` is. **Every test passes safe-by-default invariants**: non-root containers, drop-all capabilities, RuntimeDefault seccomp, resource limits, a pinned prod image, rolling-update with `maxUnavailable: 0`, HPA min replicas ≥ 2.
 
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests](https://img.shields.io/badge/tests-19%20pass%20%2B%209%20conditional-brightgreen)](#tests) [![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests](https://img.shields.io/badge/tests-26%20pass%20%2B%2012%20conditional-brightgreen)](#tests) [![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
 
 ## What you get
 
@@ -12,17 +12,20 @@ Three deployment surfaces, one production-shaped baseline:
 |---|---|---|
 | **Helm chart** | `helm/webapp/` | Deployment + Service + Ingress + HPA + PDB + ConfigMap + ServiceAccount + ServiceMonitor (Prometheus). Templates use `_helpers.tpl` for labels & fullname per chart-best-practice. |
 | **Kustomize overlays** | `kustomize/base/` + `kustomize/overlays/{dev,prod}/` | Same Deployment + Service, with overlay-specific namespace, replica count, and resource requests. |
-| **Terraform module** | `terraform/main.tf` | `aws_eks_cluster` + IAM role + EKSClusterPolicy attachment + VPC + 2 subnets in 2 AZs. Pinned to `hashicorp/aws ~> 5.0`. |
+| **Terraform stub** | `terraform/main.tf` | `aws_eks_cluster` (private API endpoint, KMS envelope encryption for Secrets, control-plane logs) + IAM role + EKSClusterPolicy attachment + VPC + 2 subnets in 2 AZs. Pinned to `hashicorp/aws ~> 5.0`. |
 
 Every shipped manifest is **safe-by-default** — the structural tests guarantee:
 * containers run as non-root (`runAsNonRoot: true`, `runAsUser >= 1000`)
 * capabilities are explicitly dropped (`capabilities.drop: ["ALL"]`)
+* pods use the container runtime's default seccomp profile (`seccompProfile.type: RuntimeDefault`)
 * root filesystem is read-only
 * every container declares CPU + memory resource limits AND requests
 * liveness + readiness probes are present
 * HPA ships with `minReplicas >= 2` (no single-replica prod by accident)
 * PodDisruptionBudget protects rolling restarts
 * Deployment uses `RollingUpdate` strategy with `maxUnavailable: 0`
+* the prod overlay pins the image tag (never `:latest`)
+* the EKS API endpoint is private unless you allowlist CIDRs (any `/0` is rejected), Secrets are KMS-encrypted, and api/audit/authenticator logs go to CloudWatch
 
 ## Tests
 
@@ -32,18 +35,21 @@ pytest -v
 ```
 
 ```
-tests/test_helm_static.py        7 passed   chart.yaml fields, safe values defaults, HPA/PDB/resources, templates exist, RollingUpdate uses maxUnavailable:0
-tests/test_kustomize_static.py   6 passed   base lists resources, securityContext, resources, overlay targets base, prod scales up, distinct namespaces
-tests/test_terraform_static.py   6 passed   required_version pinned, aws ~> 5.0, EKS cluster + role + policy, outputs, tags
-tests/test_helm_render.py        9 conditional   activate with `helm` binary: lint passes, all 8 expected kinds render,
+tests/test_helm_static.py        8 passed   chart.yaml fields, safe values defaults, seccomp, HPA/PDB/resources, templates exist,
+                                             RollingUpdate uses maxUnavailable:0
+tests/test_kustomize_static.py   8 passed   base lists resources, securityContext, seccomp, resources, overlay targets base,
+                                             prod scales up, distinct namespaces, prod pins the image
+tests/test_terraform_static.py  10 passed   required_version pinned, aws ~> 5.0, EKS cluster + role + policy, outputs, tags,
+                                             private endpoint, CIDR allowlist, KMS secrets encryption, control-plane logs
+tests/test_helm_render.py       10 conditional   activate with `helm` binary: lint passes, all 8 expected kinds render,
                                                   probes present, resources set, capabilities dropped, runAsNonRoot,
-                                                  HPA targets Deployment, PDB minAvailable, Service selectors
+                                                  seccomp, HPA targets Deployment, PDB minAvailable, Service selectors
+tests/test_kustomize_render.py   2 conditional   activate with `kustomize` or `kubectl`: prod image pinned, seccomp
 ─────────────────────────────────────────────
-19 passed, 9 conditional (skipped without helm)
-0.4s
+26 passed, 12 conditional (skipped without helm / kustomize)
 ```
 
-Run with `helm` installed (`brew install helm` / `apt install helm`) to activate the conditional suite. The skipped tests run real `helm lint` + `helm template` and assert structural properties on the rendered manifests.
+Run with `helm` installed (`brew install helm` / `apt install helm`) and `kustomize` or `kubectl` to activate the conditional suites. The skipped tests run real `helm lint` + `helm template` and build the prod overlay, then assert structural properties on the rendered manifests.
 
 ## Hero benchmark — time-to-render
 
@@ -52,7 +58,7 @@ Run with `helm` installed (`brew install helm` / `apt install helm`) to activate
 ```json
 {
   "stages": [
-    { "label": "yaml_parse_all",    "ms": 20.04, "docs_parsed": 7, "bytes_total": 4545 },
+    { "label": "yaml_parse_all",    "ms": 13.47, "docs_parsed": 7, "bytes_total": 4881 },
     { "label": "helm_template",     "skipped": true },
     { "label": "kustomize_build",   "skipped": true },
     { "label": "terraform_validate","skipped": true }
@@ -62,10 +68,12 @@ Run with `helm` installed (`brew install helm` / `apt install helm`) to activate
 
 | Stage | Cost (no extra tools) |
 |---|---:|
-| Parse all committed YAML | **20 ms** for 7 manifests / 4.5 kB |
-| Helm template render | ~50–100 ms (with `helm` installed) |
-| Kustomize build (prod overlay) | ~30–80 ms (with `kustomize` installed) |
-| Terraform validate | ~3–5 s (with `terraform` installed; includes `init -backend=false`) |
+| Parse all committed YAML | 7 manifests / 4,881 bytes; 64.9, 24.9 and 13.5 ms on three back-to-back runs |
+| Helm template render | measured when `helm` is installed |
+| Kustomize build (prod overlay) | measured when `kustomize` is installed |
+| Terraform validate | measured when `terraform` is installed (includes `init -backend=false`) |
+
+The runs were on Windows (Python 3.12) from a `git archive` export, with the other tools off PATH; `bench/results.json` is the last one. The manifest and byte counts are fixed by the repo; the parse time depends on the machine and its load, so compare it only between runs on the same machine.
 
 Stages that depend on external binaries are gracefully skipped if the binary isn't on PATH — the report records `"skipped": true` so CI sees the gap honestly.
 
@@ -103,17 +111,31 @@ kustomize build kustomize/overlays/prod
 | Replicas | 1 | 4 |
 | CPU request | 100m | 250m |
 | CPU limit | 500m | 1 core |
+| Image | `0.1.0` from base | pinned in the overlay's `images:`; the kit has no release pipeline, so a real one should replace the tag with the built digest (`kustomize edit set image ghcr.io/example/webapp@sha256:<digest>`) |
 
 Overlays use `patches` (the modern API) to selectively override the base — no full-file duplication.
 
 ## Terraform — EKS stub
 
-`terraform/main.tf` is intentionally a *minimum-viable* EKS cluster: the cluster resource + IAM role + 2 subnets + a tagged VPC. Production deployments wrap this with the `terraform-aws-modules/vpc/aws` and `terraform-aws-modules/eks/aws` community modules for full HA networking + node-group management. The kit's value here is the **pinned versions** and the **structural test that ensures the policy attachment + outputs stay in place across edits**.
+`terraform/main.tf` is intentionally a *minimum-viable* EKS cluster: the cluster resource + IAM role + 2 subnets + a tagged VPC. It has no node groups, NAT or route tables, so it is not a deployable production cluster on its own. Production deployments wrap this with the `terraform-aws-modules/vpc/aws` and `terraform-aws-modules/eks/aws` community modules for full HA networking + node-group management.
+
+The control plane itself is configured safely:
+
+| Setting | Default | Variable |
+|---|---|---|
+| API endpoint | private only | `endpoint_public_access` |
+| Public endpoint allowlist | none; required when the public endpoint is on, any `/0` (`0.0.0.0/0`, `1.2.3.4/0`) rejected | `public_access_cidrs` |
+| Secrets encryption | KMS key with rotation, created by the module | — |
+| Control-plane logs | `api`, `audit`, `authenticator` to `/aws/eks/<cluster>/cluster` | `cluster_log_types` |
+| Log retention | 90 days | `cluster_log_retention_days` |
+
+With the default private endpoint, `kubectl` must run from inside the VPC (VPN, bastion or CI runner). The structural tests keep these settings, the policy attachment and the outputs in place across edits. `terraform/tests/eks.tftest.hcl` checks the behaviour: it plans against `mock_provider "aws"` (no credentials, nothing created), asserts the defaults above, and expects the plan to fail for a public endpoint with no allowlist, any `/0`, or a malformed CIDR. CI runs `terraform fmt -check`, `validate` and `test`; `mock_provider` needs Terraform 1.7 or later.
 
 ```bash
 cd terraform
 terraform init -backend=false
 terraform validate
+terraform test
 ```
 
 ## Quickstart
@@ -151,7 +173,7 @@ cd terraform && terraform init -backend=false && terraform validate
 │   ├── base/{deployment,service}.yaml + kustomization.yaml
 │   └── overlays/{dev,prod}/kustomization.yaml
 ├── terraform/main.tf
-├── tests/                  # 28 cases (19 unconditional + 9 helm-conditional)
+├── tests/                  # 38 cases (26 unconditional + 12 helm/kustomize-conditional)
 └── bench/run_benchmark.py
 ```
 

@@ -26,6 +26,10 @@ def test_values_has_safe_defaults(values_yaml):
     assert values_yaml["containerSecurityContext"]["capabilities"]["drop"] == ["ALL"]
 
 
+def test_values_use_runtime_default_seccomp(values_yaml):
+    assert values_yaml["podSecurityContext"]["seccompProfile"] == {"type": "RuntimeDefault"}
+
+
 def test_values_defines_resource_limits(values_yaml):
     r = values_yaml["resources"]
     for k in ("cpu", "memory"):

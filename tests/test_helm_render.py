@@ -50,6 +50,12 @@ def test_rendered_pod_runs_as_non_root(helm_rendered):
     assert psc["runAsUser"] >= 1000
 
 
+def test_rendered_pod_uses_runtime_default_seccomp(helm_rendered):
+    dep = next(d for d in helm_rendered if d["kind"] == "Deployment")
+    psc = dep["spec"]["template"]["spec"]["securityContext"]
+    assert psc["seccompProfile"]["type"] == "RuntimeDefault"
+
+
 def test_rendered_hpa_targets_deployment(helm_rendered):
     hpa = next(d for d in helm_rendered if d["kind"] == "HorizontalPodAutoscaler")
     assert hpa["spec"]["scaleTargetRef"]["kind"] == "Deployment"

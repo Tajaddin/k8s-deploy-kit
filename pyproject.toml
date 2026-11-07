@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "k8s-deploy-kit"
 version = "0.1.0"
-description = "Production Kubernetes deploy kit: Helm chart with HPA + PDB, Kustomize overlays for dev/prod, Terraform EKS module. 30+ structural tests run against the YAML/HCL with no cluster required."
+description = "Production-shaped Kubernetes deploy kit: Helm chart with HPA + PDB, Kustomize overlays for dev/prod, Terraform EKS stub. 38 structural tests run against the YAML/HCL with no cluster required."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
